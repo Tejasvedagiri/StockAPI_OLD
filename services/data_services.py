@@ -4,6 +4,10 @@ import math
 import yfinance as yf
 import concurrent.futures
 import numpy as np
+from datetime import datetime    
+from utils import generate_color
+from constants import stock_weightage, total_invested_value
+from sqlalchemy import inspect
 
 
 def load_data(db, delete_flag):
@@ -11,7 +15,8 @@ def load_data(db, delete_flag):
     df = df.rename(columns=rename_cols)
     df['Price'] = df['Price'].str.replace(r'[^0-9.]', '', regex=True)
     if delete_flag:
-        table_names = db.table_names()
+        inspector = inspect(db)
+        table_names = inspector.get_table_names()
         with db.connect() as connection:
             for table_name in table_names:
                 connection.execute(f"DROP TABLE IF EXISTS `{table_name}`;")
@@ -79,7 +84,7 @@ def current_month_dividend_amount(db):
     
 
     return data_dict
-def current_value(db):
+def get_current_value(db):
     query = f"SELECT ProcessDate, Instrument, Description, TransactionCode, Quantity, CAST(Price as DECIMAL(32,32)) as Price, Amount FROM `transaction` where TransactionCode = 'Buy' or TransactionCode = 'Sell' "
 
     df = pd.read_sql(query, db)
@@ -87,7 +92,7 @@ def current_value(db):
     main_df = main_df[main_df["Amount"] < -1 ]
     main_df['Amount'] = main_df['Amount'].abs()
     instruments = main_df["Instrument"].to_list()
-    
+    color = generate_color("tab20b", len(instruments))
     current_price_dict = {}
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = [executor.submit(process_values, item) for item in instruments]
@@ -97,7 +102,13 @@ def current_value(db):
     
     main_df['CurrentPrice'] = main_df['Instrument'].map(current_price_dict)
     main_df['CurrentValue'] = main_df['CurrentPrice'] * main_df["Quantity"]
+    main_df["color"] = color
 
+    return main_df
+
+def current_value(db):
+    
+    main_df = get_current_value(db)
     current_value = main_df['CurrentValue'].sum().round(2)
     invested_amount = main_df["Amount"].sum().round(2)
     difference = ((current_value - invested_amount) / invested_amount * 100).round(2)
@@ -127,3 +138,41 @@ def tansactions(db):
 
     df = pd.read_sql(query, db)
     return df
+
+def calender_events(db):
+    query = f"SELECT Distinct Instrument as Instrument FROM `transaction` where TransactionCode = 'CDIV' and Instrument not in (Select Instrument from `transaction` where TransactionCode = 'Sell')"
+
+    df = pd.read_sql(query, db)
+    instruments = df["Instrument"].to_list()
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(getexDividendDate, item) for item in instruments]
+        results = [future.result() for future in futures]
+    
+    return results
+
+
+def getexDividendDate(instrument):
+    content = yf.Ticker(instrument).info
+    if 'exDividendDate' in content:
+        date = datetime.fromtimestamp(content['exDividendDate'])
+        data = {
+            "id" : instrument,
+            "title" : f"{instrument} Ex-Dividend-Date",
+            "date" : date.strftime("%Y-%m-%d")
+        }
+        return data
+    else:
+        return {}
+    
+def amount_to_buy(db):
+    df = get_current_value(db)
+    df["CurrentValue"] = df["CurrentValue"].round(2)
+    df["Weightage"] = df["Instrument"].map(stock_weightage)
+    df["PlannedAmountToInvest"] = df["Weightage"] * total_invested_value / 100
+    df["AmountToInvest"] = df["PlannedAmountToInvest"] - df["CurrentValue"]
+
+    df["stock"] = df["Instrument"]
+    df["amount"] = df["AmountToInvest"]
+
+    return df[["stock", "amount", "color"]]

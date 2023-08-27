@@ -43,3 +43,9 @@ async def get_transactions(db: Session = Depends(get_database_engine)):
     data = data_services.tansactions(db)
     return Response(data.to_json(orient="records"), media_type="application/json")
 
+@data_loader.get("/get_calender_events", tags=["data"])
+async def get_calender_events(db: Session = Depends(get_database_engine)):
+    data = data_services.calender_events(db)
+    return JSONResponse(content=data)
+   
+

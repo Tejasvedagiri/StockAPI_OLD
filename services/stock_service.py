@@ -3,12 +3,66 @@ from constants import rename_cols
 import yfinance as yf
 import random
 import numpy as np
-import matplotlib.pyplot as plt
+from utils import generate_color
+
 import datetime
 import pytz
 import concurrent.futures
+from services import data_services
 
 
+def montly_dividens(db):
+    query = f"SELECT * from `transaction` where TransactionCode = 'CDIV'"
+    df = pd.read_sql(query, db)
+    df = df[["ProcessDate", "Instrument", "Amount"]]
+    df["ProcessDate"] = pd.to_datetime(df["ProcessDate"])
+    df["Year"] = df["ProcessDate"].dt.year
+    df["Month"] = df["ProcessDate"].dt.month
+    df.sort_values(by=['ProcessDate'], inplace=True)
+    color = generate_color("tab20b", 3)
+
+    df = df.groupby(['Year', 'Month']).agg({'Amount': 'sum'}).reset_index()
+    content = {}
+    content["id"] = "Dividends"
+    content["color"] = color.pop()
+    content["data"] = []
+    for _, row in df.iterrows():
+        content["data"].append({"x": f"{row['Year']}-{row['Month']}", "y": row['Amount']})
+
+    return [content]
+
+def current_dividends(db):
+    query = f"SELECT * from `transaction` where TransactionCode = 'CDIV'"
+    df = pd.read_sql(query, db)
+    df = df[["ProcessDate", "Instrument", "Amount"]]
+    df["ProcessDate"] = pd.to_datetime(df["ProcessDate"])
+    df["Year"] = df["ProcessDate"].dt.year
+    df["Month"] = df["ProcessDate"].dt.month
+
+
+    df.sort_values(by=['ProcessDate'], inplace=True)
+    color = generate_color("tab20b", 50)
+    aggregated_data = {}
+
+    for _, row in df.iterrows():
+        # Generate a key by combining 'Instrument' and 'Month'
+        key = f"{row['Instrument']}"
+        print(color)
+        # Create a dictionary for the current instrument if it doesn't exist
+        if key not in aggregated_data:
+            aggregated_data[key] = {
+                'data': [],
+                'id': row['Instrument']
+            }
+
+        # Append the 'x' and 'y' values to the 'data' list for the current instrument
+        aggregated_data[key]['data'].append({'x': f"{row['Year']}-{row['Month']:02d}", 'y': row['Amount']})
+        aggregated_data[key]['color'] = color.pop(1)
+
+    # Convert the aggregated data dictionary to a list of dictionaries
+    aggregated_data_list = list(aggregated_data.values())
+
+    return aggregated_data_list
 
 def get_dividens_bar_grap_data(db):
     query = f"SELECT Distinct Instrument as Instrument FROM `transaction` where TransactionCode = 'CDIV' and Instrument not in (Select Instrument from `transaction` where TransactionCode = 'Sell')"
@@ -16,7 +70,8 @@ def get_dividens_bar_grap_data(db):
     df = pd.read_sql(query, db)
     instruments = df["Instrument"].to_list()
     end_date = datetime.datetime.now(pytz.utc)
-    start_date = end_date - datetime.timedelta(days=200)
+    start_date = end_date - datetime.timedelta(days=360)
+    start_date = start_date.replace(day=1)
 
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -33,7 +88,7 @@ def get_dividens_bar_grap_data(db):
         for _, row in df.iterrows():
             content["data"].append({"x": f"{row['Year']}-{row['Month']}", "y": row['Dividends']})
         lineData.append(content)
-        
+
     return lineData
 
 def price_chart(db):
@@ -75,21 +130,24 @@ def generate_color_shades(base_color, num_shades):
 
     return shades
 
-def generate_color(palette_name, num_colors):
-    cmap = plt.get_cmap(palette_name)
-    hex_colors = ['#%02x%02x%02x' % tuple(int(255 * rgba) for rgba in cmap(i)[:3]) for i in range(num_colors)]
-    return hex_colors
-
 def fetch_dividend_data(stock_symbol, start_date, end_date):
     ticker = yf.Ticker(stock_symbol)
     dividends = ticker.dividends.loc[start_date:end_date]
+    if start_date not in dividends.index:
+        dividends[start_date] = dividends[0]
+    dividends = dividends.sort_index()
     dividends = dividends.resample('M').ffill()
     dividends = pd.DataFrame(dividends).reset_index()
     dividends['Year'] = dividends['Date'].dt.year
     dividends['Month'] = dividends['Date'].dt.month
     dividends.drop(columns=['Date'], inplace=True)
+    dividends = dividends.dropna(subset=['Dividends'])
 
     return stock_symbol, dividends
 
-
-    
+def bar_portifolio(db):
+    df = data_services.get_current_value(db)
+    df["amount"] = df["CurrentValue"] - df["Amount"] 
+    df["amount"] = df["amount"].round(2) 
+    df["stock"] = df["Instrument"]
+    return df[["color", "amount", "stock"]]
