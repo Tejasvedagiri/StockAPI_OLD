@@ -10,7 +10,31 @@ import pytz
 import concurrent.futures
 from services import data_services
 
+def get_stock_sector(db):
+    df = data_services.get_current_value(db)
+    instruments = df["Instrument"].unique()
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        results = executor.map(getch_stock_sector, instruments)
+        sectors = {instrument: sector for instrument, sector in results}
+    df["Sector"] = df["Instrument"].map(sectors)
 
+    result = []
+    for _, row in df.iterrows():
+        sector_info = {
+            "name": row['Sector'],
+            "color": "",
+            "children": []
+        }
+        sub_data = df[df['Sector'] == row['Sector']]
+        for _, sub_row in sub_data.iterrows():
+            sector_info['children'].append({
+                "name": sub_row['Instrument'],
+                "color": sub_row['color'],
+                "value": sub_row['Amount']
+            })
+        result.append(sector_info)
+
+    return result
 def montly_dividens(db):
     query = f"SELECT * from `transaction` where TransactionCode = 'CDIV'"
     df = pd.read_sql(query, db)
@@ -19,7 +43,7 @@ def montly_dividens(db):
     df["Year"] = df["ProcessDate"].dt.year
     df["Month"] = df["ProcessDate"].dt.month
     df.sort_values(by=['ProcessDate'], inplace=True)
-    color = generate_color("tab20b", 3)
+    color = generate_color("tab20", 3)
 
     df = df.groupby(['Year', 'Month']).agg({'Amount': 'sum'}).reset_index()
     content = {}
@@ -41,7 +65,7 @@ def current_dividends(db):
 
 
     df.sort_values(by=['ProcessDate'], inplace=True)
-    color = generate_color("tab20b", 50)
+    color = generate_color("tab20", 30)
     aggregated_data = {}
 
     for _, row in df.iterrows():
@@ -78,7 +102,7 @@ def get_dividens_bar_grap_data(db):
         results = executor.map(fetch_dividend_data, instruments, [start_date]*len(instruments), [end_date]*len(instruments))
         dividend_data = {stock_symbol: dividends for stock_symbol, dividends in results}
     
-    green = generate_color("tab20b", 20)
+    green = generate_color("tab20", 20)
     lineData = []
     for key, df in dividend_data.items():
         content = {}
@@ -151,3 +175,10 @@ def bar_portifolio(db):
     df["amount"] = df["amount"].round(2) 
     df["stock"] = df["Instrument"]
     return df[["color", "amount", "stock"]]
+
+def getch_stock_sector(instrument):
+    ticker = yf.Ticker(instrument)
+    stock_info = ticker.info
+    sector = stock_info.get('sector', 'ETF')
+
+    return instrument, sector

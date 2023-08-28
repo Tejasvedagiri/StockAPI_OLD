@@ -40,3 +40,10 @@ async def get_amount_to_buy(db: Session = Depends(get_database_engine)):
     data = data_services.amount_to_buy(db)
     return Response(data.to_json(orient="records"), media_type="application/json")
 
+@stock_chart.get("/get_stock_sector/", tags=["charts"], )
+async def get_stock_sector(db: Session = Depends(get_database_engine)):
+    data = stock_service.get_stock_sector(db)
+    return JSONResponse(content=data)
+
+
+
