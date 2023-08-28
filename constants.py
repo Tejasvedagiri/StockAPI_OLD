@@ -9,7 +9,7 @@ rename_cols = {
     'Price': "Price",
     'Amount': "Amount"
 }
-total_invested_value = 2600
+total_invested_value = 3000
 stock_weightage = {
     "SCHD": 17,
     "MSFT": 20,
@@ -17,10 +17,10 @@ stock_weightage = {
     "ABR": 10,
     "O": 10,
     "CMG": 1,
-    "SLG": 10,
-    "JPM": 3,
+    "SLG": 6,
+    "JPM": 5,
     "AMD": 3,
-    "WMT": 3,
+    "WMT": 5,
     "ADBE": 1,
     "RIVN": 1,
     "HOOD": 1,

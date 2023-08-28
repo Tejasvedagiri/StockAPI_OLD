@@ -18,21 +18,29 @@ def get_stock_sector(db):
         sectors = {instrument: sector for instrument, sector in results}
     df["Sector"] = df["Instrument"].map(sectors)
 
-    result = []
+    sector_dict = {}
     for _, row in df.iterrows():
-        sector_info = {
-            "name": row['Sector'],
-            "color": "",
-            "children": []
+        content = {
+            "name": row["Instrument"],
+            "color": row["color"],
+            "amount": row["Amount"]
         }
-        sub_data = df[df['Sector'] == row['Sector']]
-        for _, sub_row in sub_data.iterrows():
-            sector_info['children'].append({
-                "name": sub_row['Instrument'],
-                "color": sub_row['color'],
-                "value": sub_row['Amount']
-            })
-        result.append(sector_info)
+        if row["Sector"] not in sector_dict:
+            sector_dict[row["Sector"]] = {
+                "name" : row["Sector"],
+                "color": "hsl(170, 70%, 50%)",
+                "children": [],
+                "amount": 0
+            }
+        sector_dict[row["Sector"]]["children"].append(content)
+        #sector_dict[row["Sector"]]["amount"] += row["Amount"]
+            
+
+    result = {
+        "name": "nivo",
+        "color": "hsl(170, 70%, 50%)",
+        "children" : list(sector_dict.values())
+    }
 
     return result
 def montly_dividens(db):
@@ -116,7 +124,7 @@ def get_dividens_bar_grap_data(db):
     return lineData
 
 def price_chart(db):
-    query = f"SELECT Instrument, abs(sum(Amount)) as AMOUNT  FROM `transaction` GROUP BY Instrument ORDER BY AMOUNT DESC LIMIT 10"
+    query = f"SELECT Instrument, abs(sum(Amount)) as AMOUNT  FROM `transaction` GROUP BY Instrument ORDER BY AMOUNT DESC LIMIT 11"
 
     df = pd.read_sql(query, db).dropna()
     instruments = df["Instrument"].to_list()
