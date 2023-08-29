@@ -1,11 +1,9 @@
-name: Docker Image CI
+name: Docker Build and push
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
+    branches: [ master ]
+    
 jobs:
 
   build:
@@ -13,6 +11,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+      - name: Checkout code
+        uses: actions/checkout@v2
+    
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ github.actor }}
+          password: ${{ secrets.TOKEN}}
+          registry: docker.pkg.github.com
+          repository: tejasvedagiri/stockapi/stockapi
+          dockerfile: dockerfile
+          tag_with_ref: true
+          tag_with_sha: true
