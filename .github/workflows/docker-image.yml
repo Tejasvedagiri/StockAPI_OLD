@@ -21,6 +21,6 @@ jobs:
           password: ${{ secrets.TOKEN}}
           registry: docker.pkg.github.com
           repository: tejasvedagiri/stockapi/stockapi
-          dockerfile: dockerfile
+          dockerfile: Dockerfile
           tag_with_ref: true
           tag_with_sha: true
