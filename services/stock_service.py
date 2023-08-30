@@ -1,9 +1,7 @@
 import pandas as pd
-from constants import rename_cols
 import yfinance as yf
-import random
 import numpy as np
-from utils import generate_color
+from utils import generate_color, generate_color_from_shades
 
 import datetime
 import pytz
@@ -33,7 +31,6 @@ def get_stock_sector(db):
                 "amount": 0
             }
         sector_dict[row["Sector"]]["children"].append(content)
-        #sector_dict[row["Sector"]]["amount"] += row["Amount"]
             
 
     result = {
@@ -77,17 +74,14 @@ def current_dividends(db):
     aggregated_data = {}
 
     for _, row in df.iterrows():
-        # Generate a key by combining 'Instrument' and 'Month'
         key = f"{row['Instrument']}"
         print(color)
-        # Create a dictionary for the current instrument if it doesn't exist
         if key not in aggregated_data:
             aggregated_data[key] = {
                 'data': [],
                 'id': row['Instrument']
             }
 
-        # Append the 'x' and 'y' values to the 'data' list for the current instrument
         aggregated_data[key]['data'].append({'x': f"{row['Year']}-{row['Month']:02d}", 'y': row['Amount']})
         aggregated_data[key]['color'] = color.pop(1)
 
@@ -131,8 +125,8 @@ def price_chart(db):
     
     lineData = []
 
-    green_colors = generate_color_shades("green", len(instruments))
-    red_colors = generate_color_shades("red", len(instruments))
+    green_colors = generate_color_from_shades("green", len(instruments))
+    red_colors = generate_color_from_shades("red", len(instruments))
     for symbol in instruments:
         content = {}
         content["id"] = symbol
@@ -146,21 +140,6 @@ def price_chart(db):
     
     return lineData
 
-def generate_color_shades(base_color, num_shades):
-    shades = []
-    red = random.sample(range(150, 250 + 1), num_shades)
-    green = random.sample(range(150, 250 + 1), num_shades)
-    for i in range(num_shades):
-
-        r = red[i] if base_color=="red" else 0 
-        g = green[i] if base_color=="green" else 0  
-        b = 0 
-
-        hex_color = "#{:02X}{:02X}{:02X}".format(r, g, b)
-
-        shades.append(hex_color)
-
-    return shades
 
 def fetch_dividend_data(stock_symbol, start_date, end_date):
     ticker = yf.Ticker(stock_symbol)
