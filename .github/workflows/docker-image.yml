@@ -33,6 +33,9 @@ jobs:
             type=ref,event=branch
             type=sha
 
+      - name: Echo Some Text
+        run: echo ${{ steps.meta.outputs.labels }}
+
       - name: Build and push Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
