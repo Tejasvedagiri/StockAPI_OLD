@@ -1,13 +1,25 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, File, UploadFile
+from fastapi.responses import JSONResponse
 from services import data_services
 from fastapi import Depends
 from sqlalchemy.orm import Session
 from database import get_database_engine
 from fastapi import Response
 from fastapi.responses import JSONResponse
+from auth import get_current_user
+
 
 data_loader = APIRouter(prefix="/dataloader")
-
+@data_loader.post("/upload_csv", tags=["data"])
+async def upload_file(file: UploadFile, db: Session = Depends(get_database_engine), username: str = Depends(get_current_user)):
+    if not file.filename.endswith(".csv"):
+        return JSONResponse(content={"error": "Only CSV files are allowed."}, status_code=400)
+    try:
+        count = data_services.upload_csv(file, db)
+        return JSONResponse(content=f"Read file count ==> {count}")
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+    
 @data_loader.get("/load_base_csv/", tags=["data"])
 async def load_base_csv(flag: bool = Query(default=True, description="Reset db contents"), 
                         db: Session = Depends(get_database_engine)):

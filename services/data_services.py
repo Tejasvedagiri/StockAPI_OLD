@@ -8,7 +8,20 @@ from datetime import datetime
 from utils import generate_color
 from constants import stock_weightage, total_invested_value
 from sqlalchemy import inspect
+import tempfile
 
+
+def upload_csv(file, db):
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_file.write(file.file.read())
+
+    df = pd.read_csv(temp_file.name)
+    df = df.rename(columns=rename_cols)
+    df['Price'] = df['Price'].str.replace(r'[^0-9.]', '', regex=True)
+    records = df.to_sql("transaction", db, index=False)
+    return records
+
+    
 
 def load_data(db, delete_flag):
     df = pd.read_csv("temp.csv")
