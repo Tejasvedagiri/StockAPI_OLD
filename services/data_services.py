@@ -143,8 +143,10 @@ def process_values(instrument):
     ticker = tickers.tickers[instrument]
     if "currentPrice" in ticker.info:
         return {instrument : ticker.info["currentPrice"]}
-    else:
+    elif ticker.info["ask"] != 0:
         return {instrument : ticker.info["ask"]}
+    else:
+        return {instrument : ticker.info["navPrice"]}
 
 def tansactions(db):
     query = f"SELECT rowid as txId, Instrument as instrument, ProcessDate as date, Amount as amt, Quantity as quantity  FROM `transaction` where TransactionCode = 'Buy' or TransactionCode = 'Sell'"
