@@ -27,6 +27,8 @@ app.include_router(data_loader)
 
 @app.get("/apidocs", include_in_schema=False)
 async def get_documentation(request: Request):
+    logger.info(request.scope)
+    logger.info(request.scope.root_path)
     root_path = request.scope.get("root_path", "").rstrip("/")
     openapi_url = root_path + app.openapi_url
     logger.info(openapi_url)
