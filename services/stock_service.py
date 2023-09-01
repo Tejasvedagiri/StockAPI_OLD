@@ -2,6 +2,8 @@ import pandas as pd
 import yfinance as yf
 import numpy as np
 from utils import generate_color, generate_color_from_shades
+from constants import rename_cols, TABLE_NAME
+
 
 import datetime
 import pytz
@@ -41,7 +43,7 @@ def get_stock_sector(db):
 
     return result
 def montly_dividens(db):
-    query = f"SELECT * from `transaction` where TransactionCode = 'CDIV'"
+    query = f"SELECT * from {TABLE_NAME} where TransactionCode = 'CDIV'"
     df = pd.read_sql(query, db)
     df = df[["ProcessDate", "Instrument", "Amount"]]
     df["ProcessDate"] = pd.to_datetime(df["ProcessDate"])
@@ -61,7 +63,7 @@ def montly_dividens(db):
     return [content]
 
 def current_dividends(db):
-    query = f"SELECT * from `transaction` where TransactionCode = 'CDIV'"
+    query = f"SELECT * from {TABLE_NAME} where TransactionCode = 'CDIV'"
     df = pd.read_sql(query, db)
     df = df[["ProcessDate", "Instrument", "Amount"]]
     df["ProcessDate"] = pd.to_datetime(df["ProcessDate"])
@@ -91,7 +93,7 @@ def current_dividends(db):
     return aggregated_data_list
 
 def get_dividens_bar_grap_data(db):
-    query = f"SELECT Distinct Instrument as Instrument FROM `transaction` where TransactionCode = 'CDIV' and Instrument not in (Select Instrument from `transaction` where TransactionCode = 'Sell')"
+    query = f"SELECT Distinct Instrument as Instrument FROM {TABLE_NAME} where TransactionCode = 'CDIV' and Instrument not in (Select Instrument from {TABLE_NAME} where TransactionCode = 'Sell')"
     
     df = pd.read_sql(query, db)
     instruments = df["Instrument"].to_list()
@@ -118,7 +120,7 @@ def get_dividens_bar_grap_data(db):
     return lineData
 
 def price_chart(db):
-    query = f"SELECT Instrument, abs(sum(Amount)) as AMOUNT  FROM `transaction` GROUP BY Instrument ORDER BY AMOUNT DESC LIMIT 11"
+    query = f"SELECT Instrument, abs(sum(Amount)) as AMOUNT  FROM {TABLE_NAME} GROUP BY Instrument ORDER BY AMOUNT DESC LIMIT 11"
 
     df = pd.read_sql(query, db).dropna()
     instruments = df["Instrument"].to_list()

@@ -1,5 +1,5 @@
 import pandas as pd
-from constants import rename_cols
+from constants import rename_cols, TABLE_NAME
 import math
 import yfinance as yf
 import concurrent.futures
@@ -37,7 +37,7 @@ def load_data(db, delete_flag):
     return records
 
 def invested_amount(db):
-    query = f"SELECT ProcessDate, Instrument, Description, TransactionCode, Quantity, CAST(Price as DECIMAL(32,32)) as Price, Amount FROM `transaction` where TransactionCode = 'Buy' or TransactionCode = 'Sell' "
+    query = f"SELECT ProcessDate, Instrument, Description, TransactionCode, Quantity, CAST(Price as DECIMAL(32,32)) as Price, Amount FROM {TABLE_NAME} where TransactionCode = 'Buy' or TransactionCode = 'Sell' "
     
     df = pd.read_sql(query, db)
     main_df = df.groupby('Instrument').agg({'Quantity': 'sum', 'Amount': 'sum'}).reset_index()
@@ -57,7 +57,7 @@ def invested_amount(db):
     return return_dict
 
 def dividend_amount(db):
-    query = f"SELECT sum(Amount) as Amount FROM `transaction` where TransactionCode = 'CDIV'"
+    query = f"SELECT sum(Amount) as Amount FROM {TABLE_NAME} where TransactionCode = 'CDIV'"
 
     df = pd.read_sql(query, db)
     content = {
@@ -69,7 +69,7 @@ def dividend_amount(db):
     return content
 
 def current_month_dividend_amount(db):
-    query = f"SELECT * FROM `transaction` where TransactionCode = 'CDIV'"
+    query = f"SELECT * FROM {TABLE_NAME} where TransactionCode = 'CDIV'"
     
     df = pd.read_sql(query, db)
     df['ProcessDate'] = pd.to_datetime(df['ProcessDate'])
@@ -98,7 +98,7 @@ def current_month_dividend_amount(db):
 
     return data_dict
 def get_current_value(db):
-    query = f"SELECT ProcessDate, Instrument, Description, TransactionCode, Quantity, CAST(Price as DECIMAL(32,32)) as Price, Amount FROM `transaction` where TransactionCode = 'Buy' or TransactionCode = 'Sell' "
+    query = f"SELECT ProcessDate, Instrument, Description, TransactionCode, Quantity, CAST(Price as DECIMAL(32,32)) as Price, Amount FROM {TABLE_NAME} where TransactionCode = 'Buy' or TransactionCode = 'Sell' "
 
     df = pd.read_sql(query, db)
     main_df = df.groupby('Instrument').agg({'Quantity': 'sum', 'Amount': 'sum'}).reset_index()
@@ -149,13 +149,13 @@ def process_values(instrument):
         return {instrument : ticker.info["navPrice"]}
 
 def tansactions(db):
-    query = f"SELECT rowid as txId, Instrument as instrument, ProcessDate as date, Amount as amt, Quantity as quantity  FROM `transaction` where TransactionCode = 'Buy' or TransactionCode = 'Sell'"
+    query = f"SELECT rowid as txId, Instrument as instrument, ProcessDate as date, Amount as amt, Quantity as quantity  FROM {TABLE_NAME} where TransactionCode = 'Buy' or TransactionCode = 'Sell'"
 
     df = pd.read_sql(query, db)
     return df
 
 def calender_events(db):
-    query = f"SELECT Distinct Instrument as Instrument FROM `transaction` where TransactionCode = 'CDIV' and Instrument not in (Select Instrument from `transaction` where TransactionCode = 'Sell')"
+    query = f"SELECT Distinct Instrument as Instrument FROM {TABLE_NAME} where TransactionCode = 'CDIV' and Instrument not in (Select Instrument from {TABLE_NAME} where TransactionCode = 'Sell')"
 
     df = pd.read_sql(query, db)
     instruments = df["Instrument"].to_list()

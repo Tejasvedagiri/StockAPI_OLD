@@ -30,3 +30,5 @@ stock_weightage = {
     "SBUX": 1,
     "GMRE": 1,
 }
+
+TABLE_NAME = "StockTransactions"
