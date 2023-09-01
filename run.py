@@ -19,19 +19,15 @@ file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelnam
 if not logger.handlers:
     logger.addHandler(file_handler)
 
-app = FastAPI()
+app = FastAPI(root_path="/api")
 
-app = FastAPI()
 app.include_router(stock_chart)
 app.include_router(data_loader)
 
-@app.get("/apidocs", include_in_schema=False)
+@app.get("/api/docs", include_in_schema=False)
 async def get_documentation(request: Request):
-    logger.info(request.scope)
-    logger.info(request.scope.root_path)
     root_path = request.scope.get("root_path", "").rstrip("/")
     openapi_url = root_path + app.openapi_url
-    logger.info(openapi_url)
     return get_swagger_ui_html(openapi_url=openapi_url, title="Swagger")
 
 @app.get("/")
