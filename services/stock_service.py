@@ -77,7 +77,6 @@ def current_dividends(db):
 
     for _, row in df.iterrows():
         key = f"{row['Instrument']}"
-        print(color)
         if key not in aggregated_data:
             aggregated_data[key] = {
                 'data': [],

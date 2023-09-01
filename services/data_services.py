@@ -18,7 +18,7 @@ def upload_csv(file, db):
     df = pd.read_csv(temp_file.name)
     df = df.rename(columns=rename_cols)
     df['Price'] = df['Price'].str.replace(r'[^0-9.]', '', regex=True)
-    records = df.to_sql("transaction", db, index=False)
+    records = df.to_sql(TABLE_NAME, db, index=False)
     return records
 
     
@@ -37,7 +37,7 @@ def load_data(db, delete_flag):
     return records
 
 def invested_amount(db):
-    query = f"SELECT ProcessDate, Instrument, Description, TransactionCode, Quantity, CAST(Price as DECIMAL(32,32)) as Price, Amount FROM {TABLE_NAME} where TransactionCode = 'Buy' or TransactionCode = 'Sell' "
+    query = f"SELECT ProcessDate, Instrument, Description, TransactionCode, Quantity, CAST(Price as DECIMAL(30,30)) as Price, Amount FROM {TABLE_NAME} where TransactionCode = 'Buy' or TransactionCode = 'Sell' "
     
     df = pd.read_sql(query, db)
     main_df = df.groupby('Instrument').agg({'Quantity': 'sum', 'Amount': 'sum'}).reset_index()
@@ -98,7 +98,7 @@ def current_month_dividend_amount(db):
 
     return data_dict
 def get_current_value(db):
-    query = f"SELECT ProcessDate, Instrument, Description, TransactionCode, Quantity, CAST(Price as DECIMAL(32,32)) as Price, Amount FROM {TABLE_NAME} where TransactionCode = 'Buy' or TransactionCode = 'Sell' "
+    query = f"SELECT ProcessDate, Instrument, Description, TransactionCode, Quantity, CAST(Price as DECIMAL(30,30)) as Price, Amount FROM {TABLE_NAME} where TransactionCode = 'Buy' or TransactionCode = 'Sell' "
 
     df = pd.read_sql(query, db)
     main_df = df.groupby('Instrument').agg({'Quantity': 'sum', 'Amount': 'sum'}).reset_index()
@@ -149,9 +149,10 @@ def process_values(instrument):
         return {instrument : ticker.info["navPrice"]}
 
 def tansactions(db):
-    query = f"SELECT rowid as txId, Instrument as instrument, ProcessDate as date, Amount as amt, Quantity as quantity  FROM {TABLE_NAME} where TransactionCode = 'Buy' or TransactionCode = 'Sell'"
+    query = f"SELECT Instrument as instrument, ProcessDate as date, Amount as amt, Quantity as quantity  FROM {TABLE_NAME} where TransactionCode = 'Buy' or TransactionCode = 'Sell'"
 
     df = pd.read_sql(query, db)
+    df["txId"] = df.index + 1
     return df
 
 def calender_events(db):

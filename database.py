@@ -6,8 +6,12 @@ db_password = os.environ.get("DB_PASSWORD")
 db_hostname = os.environ.get("DB_HOSTNAME")
 db_port = os.environ.get("DB_PORT")
 db_database = os.environ.get("DB_DATABASE")
+db_type = os.environ.get("DB_TYPE")
 
-if db_username:
+
+if True:
+    DATABASE_URL = f'mysql+mysqlconnector://{db_username}:{db_password}@{db_hostname}:{db_port}/{db_database}'
+elif db_type == "POSG":
     DATABASE_URL = f'postgresql://{db_username}:{db_password}@{db_hostname}:{db_port}/{db_database}'
 else:
     DATABASE_URL = "sqlite:///./test.db"

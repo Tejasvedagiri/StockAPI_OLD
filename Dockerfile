@@ -1,13 +1,23 @@
-FROM python:3.11.4-alpine
+# Use an official Python runtime as a parent image
+FROM python:3.11.4-slim AS builder
 
-RUN apk update
-RUN apk add make automake gcc g++ subversion python3-dev
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
+ENV MYSQLCLIENT_CFLAGS="-I/usr/include/mysql"
+ENV MYSQLCLIENT_LDFLAGS="-L/usr/lib/mysql -lmysqlclient"
+
+# Copy your FastAPI application code into the container
 WORKDIR /app
+COPY . /app
 
-COPY . /app/
-RUN pip install -r requirements.txt
 
+# Install FastAPI dependencies
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Expose the port your FastAPI app will run on
 EXPOSE 8000
 
-CMD ["uvicorn", "run:app", "--host", "0.0.0.0", "--port", "80"]
+# Start the FastAPI app using Uvicorn
+CMD ["uvicorn", "run:app", "--host", "0.0.0.0", "--port", "8000"]
