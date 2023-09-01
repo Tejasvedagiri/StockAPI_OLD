@@ -1,0 +1,11 @@
+2023-08-31 21:05:12,409 - run - INFO - Log message inside route handler
+2023-08-31 21:05:48,402 - run - INFO - Test
+2023-08-31 21:06:38,789 - run - INFO - Test
+2023-08-31 21:06:54,003 - run - INFO - Test
+2023-08-31 21:06:58,453 - run - INFO - Log message inside route handler
+2023-08-31 21:08:06,105 - run - INFO - Test
+2023-08-31 21:08:23,539 - run - INFO - Test
+2023-08-31 21:08:51,366 - run - INFO - Test
+2023-08-31 21:09:04,179 - run - INFO - Test
+2023-08-31 21:09:30,578 - run - INFO - /openapi.json
+2023-08-31 21:09:51,633 - run - INFO - /openapi.json

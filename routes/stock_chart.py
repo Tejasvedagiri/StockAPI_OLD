@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 from database import get_database_engine
 from fastapi import Response
 from fastapi.responses import JSONResponse
+import logging
 
+logger = logging.getLogger(__name__) 
 
 stock_chart = APIRouter(prefix="/charts")
 
