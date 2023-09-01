@@ -2,12 +2,4 @@
 *.db
 .env
 *.pyc
-
-https://samos.coaps.fsu.edu/html/cruise_data_availability.php
-https://samos.coaps.fsu.edu/html/cruise_dates.php
-"id": "MSFT",
-    "data": [
-      {
-        "x": "8-3",
-        "y": 325.97
-      },
+*.log
