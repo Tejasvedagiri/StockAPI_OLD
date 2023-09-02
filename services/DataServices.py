@@ -1,45 +1,41 @@
 import pandas as pd
 from constants import rename_cols, TABLE_NAME
-import math
 import yfinance as yf
 import concurrent.futures
-import numpy as np
 from datetime import datetime    
-from utils import generate_color
+from utils.util import generate_color
 from constants import stock_weightage, total_invested_value
-from sqlalchemy import inspect
 import tempfile
+from dependecies.DataDependencies import DataDependencies
+from sqlalchemy.sql import text
+from fastapi import UploadFile, HTTPException
 
-
-def upload_csv(file, db):
+def upload_csv(file: UploadFile, deps: DataDependencies ):
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_file.write(file.file.read())
 
     df = pd.read_csv(temp_file.name)
+    df["UserID"] = deps.user.ID
     df = df.rename(columns=rename_cols)
     df['Price'] = df['Price'].str.replace(r'[^0-9.]', '', regex=True)
-    records = df.to_sql(TABLE_NAME, db, index=False)
+    records = df.to_sql(TABLE_NAME, deps.db, index=False)
     return records
 
-    
-
-def load_data(db, delete_flag):
-    df = pd.read_csv("temp.csv")
-    df = df.rename(columns=rename_cols)
-    df['Price'] = df['Price'].str.replace(r'[^0-9.]', '', regex=True)
-    if delete_flag:
-        inspector = inspect(db)
-        table_names = inspector.get_table_names()
-        with db.connect() as connection:
-            for table_name in table_names:
-                connection.execute(f"DROP TABLE IF EXISTS `{table_name}`;")
-    records = df.to_sql("transaction", db, index=False)
-    return records
-
-def invested_amount(db):
-    query = f"SELECT ProcessDate, Instrument, Description, TransactionCode, Quantity, CAST(Price as DECIMAL(30,30)) as Price, Amount FROM {TABLE_NAME} where TransactionCode = 'Buy' or TransactionCode = 'Sell' "
-    
-    df = pd.read_sql(query, db)
+def invested_amount(deps: DataDependencies):
+    query = text(
+    f"""
+        SELECT ProcessDate, Instrument, Description, TransactionCode, Quantity, 
+        CAST(Price as DECIMAL(30,30)) as Price, Amount 
+        FROM {TABLE_NAME} 
+        WHERE UserID = :user_id 
+        AND (TransactionCode = 'Buy' OR TransactionCode = 'Sell')
+    """
+    )
+    params = {"user_id": deps.user.ID}
+    df = pd.read_sql(query, deps.db, params=params)
+    return_dict = {}
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No user transactions found")
     main_df = df.groupby('Instrument').agg({'Quantity': 'sum', 'Amount': 'sum'}).reset_index()
     main_df = main_df[main_df["Amount"] < -1 ]
     main_df['Amount'] = main_df['Amount'].abs()
@@ -47,19 +43,24 @@ def invested_amount(db):
     difference = ((2600 - invested_amount) / invested_amount * 100).round(2)
 
     return_dict = {
-        "title": invested_amount,
-        "subtitle": "Reaming Value",
-        "progress" : str(1 - difference / 100),
-        "flag" : True,
-        "increase" : (2600 - invested_amount).round(2)
+            "title": invested_amount,
+            "subtitle": "Reaming Value",
+            "progress" : str(1 - difference / 100),
+            "flag" : True,
+            "increase" : (2600 - invested_amount).round(2)
     }
 
     return return_dict
 
-def dividend_amount(db):
-    query = f"SELECT sum(Amount) as Amount FROM {TABLE_NAME} where TransactionCode = 'CDIV'"
+def dividend_amount(deps: DataDependencies):
+    query = text(
+        f"SELECT sum(Amount) as Amount FROM {TABLE_NAME} WHERE UserID = :user_id  AND TransactionCode = 'CDIV'"
+    )
+    params = {"user_id": deps.user.ID}
 
-    df = pd.read_sql(query, db)
+    df = pd.read_sql(query, deps.db, params=params)
+    if df.empty or not df["Amount"][0]:
+        raise HTTPException(status_code=404, detail="No user transactions found")
     content = {
       "title": df["Amount"][0],
       "subtitle": "Total Dividends",
@@ -68,10 +69,13 @@ def dividend_amount(db):
     }
     return content
 
-def current_month_dividend_amount(db):
-    query = f"SELECT * FROM {TABLE_NAME} where TransactionCode = 'CDIV'"
-    
-    df = pd.read_sql(query, db)
+def current_month_dividend_amount(deps):
+    query = text(f"SELECT * FROM {TABLE_NAME} where TransactionCode = 'CDIV' AND UserID = :user_id")
+
+    params = {"user_id": deps.user.ID}
+    df = pd.read_sql(query, deps.db, params=params)
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No user transactions found")
     df['ProcessDate'] = pd.to_datetime(df['ProcessDate'])
     current_month = pd.Timestamp.now().month
     mask = df['ProcessDate'].dt.month == current_month
@@ -97,10 +101,17 @@ def current_month_dividend_amount(db):
     
 
     return data_dict
-def get_current_value(db):
-    query = f"SELECT ProcessDate, Instrument, Description, TransactionCode, Quantity, CAST(Price as DECIMAL(30,30)) as Price, Amount FROM {TABLE_NAME} where TransactionCode = 'Buy' or TransactionCode = 'Sell' "
+def get_current_value(deps):
+    query = text(
+        f'''SELECT ProcessDate, Instrument, Description, TransactionCode, Quantity, CAST(Price as DECIMAL(30,30)) as Price, Amount 
+        FROM {TABLE_NAME} where (TransactionCode = 'Buy' or TransactionCode = 'Sell') AND UserID = :user_id
+    ''')
+    
+    params = {"user_id": deps.user.ID}
 
-    df = pd.read_sql(query, db)
+    df = pd.read_sql(query, deps.db, params=params)
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No user transactions found")
     main_df = df.groupby('Instrument').agg({'Quantity': 'sum', 'Amount': 'sum'}).reset_index()
     main_df = main_df[main_df["Amount"] < -1 ]
     main_df['Amount'] = main_df['Amount'].abs()
@@ -119,9 +130,11 @@ def get_current_value(db):
 
     return main_df
 
-def current_value(db):
+def current_value(deps: DataDependencies):
     
-    main_df = get_current_value(db)
+    main_df = get_current_value(deps)
+    if not main_df:
+        raise HTTPException(status_code=404, detail="No user transactions found")
     current_value = main_df['CurrentValue'].sum().round(2)
     invested_amount = main_df["Amount"].sum().round(2)
     difference = ((current_value - invested_amount) / invested_amount * 100).round(2)
@@ -148,17 +161,23 @@ def process_values(instrument):
     else:
         return {instrument : ticker.info["navPrice"]}
 
-def tansactions(db):
-    query = f"SELECT Instrument as instrument, ProcessDate as date, Amount as amt, Quantity as quantity  FROM {TABLE_NAME} where TransactionCode = 'Buy' or TransactionCode = 'Sell'"
-
-    df = pd.read_sql(query, db)
+def tansactions(deps):
+    query = text(f"SELECT Instrument as instrument, ProcessDate as date, Amount as amt, Quantity as quantity  FROM {TABLE_NAME} where (TransactionCode = 'Buy' or TransactionCode = 'Sell') AND UserID = :user_id")
+    
+    params = {"user_id": deps.user.ID}
+    df = pd.read_sql(query, deps.db, params=params)
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No user transactions found")
     df["txId"] = df.index + 1
     return df
 
-def calender_events(db):
-    query = f"SELECT Distinct Instrument as Instrument FROM {TABLE_NAME} where TransactionCode = 'CDIV' and Instrument not in (Select Instrument from {TABLE_NAME} where TransactionCode = 'Sell')"
+def calender_events(deps):
+    query = text(f"SELECT Distinct Instrument as Instrument FROM {TABLE_NAME} where TransactionCode = 'CDIV' and Instrument not in (Select Instrument from {TABLE_NAME} where TransactionCode = 'Sell') AND UserID = :user_id")
 
-    df = pd.read_sql(query, db)
+    params = {"user_id": deps.user.ID}
+    df = pd.read_sql(query, deps.db, params=params)
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No user transactions found")
     instruments = df["Instrument"].to_list()
 
     with concurrent.futures.ThreadPoolExecutor() as executor:

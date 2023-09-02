@@ -1,17 +1,19 @@
 import pandas as pd
 import yfinance as yf
 import numpy as np
-from utils import generate_color, generate_color_from_shades
-from constants import rename_cols, TABLE_NAME
-
+from utils.util import generate_color, generate_color_from_shades
+from constants import TABLE_NAME
+from sqlalchemy.sql import text
+from dependecies.DataDependencies import DataDependencies
+from fastapi import HTTPException
 
 import datetime
 import pytz
 import concurrent.futures
-from services import data_services
+from services import DataServices
 
-def get_stock_sector(db):
-    df = data_services.get_current_value(db)
+def get_stock_sector(deps: DataDependencies):
+    df = DataServices.get_current_value(deps)
     instruments = df["Instrument"].unique()
     with concurrent.futures.ThreadPoolExecutor() as executor:
         results = executor.map(getch_stock_sector, instruments)
@@ -42,9 +44,14 @@ def get_stock_sector(db):
     }
 
     return result
-def montly_dividens(db):
-    query = f"SELECT * from {TABLE_NAME} where TransactionCode = 'CDIV'"
-    df = pd.read_sql(query, db)
+def montly_dividens(deps: DataDependencies):
+    query = f"SELECT * from {TABLE_NAME} where TransactionCode = 'CDIV' AND UserId = :user_id"
+    params = {"user_id": deps.user.ID}
+
+    df = pd.read_sql(query, deps.db, params=params)
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No user transactions found")
+
     df = df[["ProcessDate", "Instrument", "Amount"]]
     df["ProcessDate"] = pd.to_datetime(df["ProcessDate"])
     df["Year"] = df["ProcessDate"].dt.year
@@ -62,9 +69,13 @@ def montly_dividens(db):
 
     return [content]
 
-def current_dividends(db):
-    query = f"SELECT * from {TABLE_NAME} where TransactionCode = 'CDIV'"
-    df = pd.read_sql(query, db)
+def current_dividends(deps: DataDependencies):
+    query = f"SELECT * from {TABLE_NAME} where TransactionCode = 'CDIV' AND UserId = :user_id"
+    params = {"user_id": deps.user.ID}
+
+    df = pd.read_sql(query, deps.db, params=params)
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No user transactions found")
     df = df[["ProcessDate", "Instrument", "Amount"]]
     df["ProcessDate"] = pd.to_datetime(df["ProcessDate"])
     df["Year"] = df["ProcessDate"].dt.year
@@ -91,10 +102,13 @@ def current_dividends(db):
 
     return aggregated_data_list
 
-def get_dividens_bar_grap_data(db):
-    query = f"SELECT Distinct Instrument as Instrument FROM {TABLE_NAME} where TransactionCode = 'CDIV' and Instrument not in (Select Instrument from {TABLE_NAME} where TransactionCode = 'Sell')"
-    
-    df = pd.read_sql(query, db)
+def get_dividens_bar_grap_data(deps: DataDependencies):
+    query = text(f"SELECT Distinct Instrument as Instrument FROM {TABLE_NAME} where UserId = :user_id AND TransactionCode = 'CDIV' and Instrument not in (Select Instrument from {TABLE_NAME} where TransactionCode = 'Sell')")
+    params = {"user_id": deps.user.ID}
+
+    df = pd.read_sql(query, deps.db, params=params)
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No user transactions found")
     instruments = df["Instrument"].to_list()
     end_date = datetime.datetime.now(pytz.utc)
     start_date = end_date - datetime.timedelta(days=360)
@@ -118,10 +132,14 @@ def get_dividens_bar_grap_data(db):
 
     return lineData
 
-def price_chart(db):
-    query = f"SELECT Instrument, abs(sum(Amount)) as AMOUNT  FROM {TABLE_NAME} GROUP BY Instrument ORDER BY AMOUNT DESC LIMIT 11"
+def price_chart(deps: DataDependencies):
+    query = f"SELECT Instrument, abs(sum(Amount)) as AMOUNT FROM {TABLE_NAME} WHERE UserId = :user_id GROUP BY Instrument ORDER BY AMOUNT DESC LIMIT 11"
+    
+    params = {"user_id": deps.user.ID}
 
-    df = pd.read_sql(query, db).dropna()
+    df = pd.read_sql(query, deps.db, params=params).dropna()
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No user transactions found")
     instruments = df["Instrument"].to_list()
     
     lineData = []
@@ -157,8 +175,8 @@ def fetch_dividend_data(stock_symbol, start_date, end_date):
 
     return stock_symbol, dividends
 
-def bar_portifolio(db):
-    df = data_services.get_current_value(db)
+def bar_portifolio(dep: DataDependencies):
+    df = DataServices.get_current_value(dep.db)
     df["amount"] = df["CurrentValue"] - df["Amount"] 
     df["amount"] = df["amount"].round(2) 
     df["stock"] = df["Instrument"]

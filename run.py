@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Request
-from routes.stock_chart import stock_chart
-from routes.data_loader import data_loader
-from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi import FastAPI
+from routes.StockRouter import stock_router
+from routes.DataRouter import data_router
+from routes.UserRouter import user_router
+from routes.AuthRouter import auth_router
 import logging
 
 # Configure logging
@@ -20,9 +21,10 @@ if not logger.handlers:
     logger.addHandler(file_handler)
 
 app = FastAPI(openapi_prefix="/api")
-
-app.include_router(stock_chart)
-app.include_router(data_loader)
+app.include_router(auth_router)
+app.include_router(stock_router)
+app.include_router(data_router)
+app.include_router(user_router)
 
 @app.get("/")
 async def example_route():
