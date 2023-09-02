@@ -4,6 +4,7 @@ from routes.DataRouter import data_router
 from routes.UserRouter import user_router
 from routes.AuthRouter import auth_router
 import logging
+from fastapi.middleware.cors import CORSMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -20,11 +21,18 @@ file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelnam
 if not logger.handlers:
     logger.addHandler(file_handler)
 
-app = FastAPI(openapi_prefix="/api")
+app = FastAPI()
 app.include_router(auth_router)
 app.include_router(stock_router)
 app.include_router(data_router)
 app.include_router(user_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Replace with your allowed origins
+    allow_methods=["*"],  # Allow all HTTP methods (for development, restrict in production)
+    allow_headers=["*"],  # Allow all headers (for development, restrict in production)
+)
 
 @app.get("/")
 async def example_route():

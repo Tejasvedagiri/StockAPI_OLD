@@ -133,8 +133,6 @@ def get_current_value(deps):
 def current_value(deps: DataDependencies):
     
     main_df = get_current_value(deps)
-    if not main_df:
-        raise HTTPException(status_code=404, detail="No user transactions found")
     current_value = main_df['CurrentValue'].sum().round(2)
     invested_amount = main_df["Amount"].sum().round(2)
     difference = ((current_value - invested_amount) / invested_amount * 100).round(2)

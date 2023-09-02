@@ -9,7 +9,6 @@ from dependecies.AuthDependencies import AuthDependencies
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def get_current_active_user(token: str = Depends(oauth2_scheme), deps: AuthDependencies = Depends()):
-    print("HERE")
     try:
         payload = jwt.decode(token, deps.hasher.SECRET_KEY, algorithms=[deps.hasher.ALGORITHM])
         username: str = payload.get("sub")
