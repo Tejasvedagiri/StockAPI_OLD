@@ -101,7 +101,7 @@ def current_month_dividend_amount(deps):
     
 
     return data_dict
-def get_current_value(deps):
+def get_current_value(deps: DataDependencies):
     query = text(
         f'''SELECT ProcessDate, Instrument, Description, TransactionCode, Quantity, CAST(Price as DECIMAL(30,30)) as Price, Amount 
         FROM {TABLE_NAME} where (TransactionCode = 'Buy' or TransactionCode = 'Sell') AND UserID = :user_id
@@ -198,8 +198,8 @@ def getexDividendDate(instrument):
     else:
         return {}
     
-def amount_to_buy(db):
-    df = get_current_value(db)
+def amount_to_buy(deps: DataDependencies):
+    df = get_current_value(deps)
     df["CurrentValue"] = df["CurrentValue"].round(2)
     df["Weightage"] = df["Instrument"].map(stock_weightage)
     df["PlannedAmountToInvest"] = df["Weightage"] * total_invested_value / 100

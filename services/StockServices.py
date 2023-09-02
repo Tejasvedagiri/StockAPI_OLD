@@ -176,7 +176,7 @@ def fetch_dividend_data(stock_symbol, start_date, end_date):
     return stock_symbol, dividends
 
 def bar_portifolio(dep: DataDependencies):
-    df = DataServices.get_current_value(dep.db)
+    df = DataServices.get_current_value(dep)
     df["amount"] = df["CurrentValue"] - df["Amount"] 
     df["amount"] = df["amount"].round(2) 
     df["stock"] = df["Instrument"]
