@@ -7,8 +7,8 @@ def authenticate_user(username: str, password: str, deps: AuthDependencies ):
     user = get_user_details_from_username(deps=deps, username=username)
     if not user or not deps.hasher.verify(password, user.Password):
         return None
-    access_token = deps.hasher.create_access_token(data={"sub": user.UserName})
-    return access_token
+    access_token, expiry_time = deps.hasher.create_access_token(data={"sub": user.UserName})
+    return access_token, expiry_time
 
 def get_user_details_from_username(deps, username):
     user = deps.session.query(User).filter(User.UserName == username).first()

@@ -18,12 +18,12 @@ class Hash:
     def verify(self, plain_password: str, hashed_password: str):
         return self.pwd_context.verify(plain_password+self.salt, hashed_password)
     
-    def create_access_token(self, data: dict, ):
+    def create_access_token(self, data: dict):
         to_encode = data.copy()
         expire = datetime.utcnow() + timedelta(minutes=15)
         to_encode.update({"exp": expire})
         encoded_jwt = jwt.encode(to_encode, self.SECRET_KEY, algorithm=self.ALGORITHM)
-        return encoded_jwt
+        return encoded_jwt, expire
  
 def get_hasher():
     return Hash(salt="SALT")

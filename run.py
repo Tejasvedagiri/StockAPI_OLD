@@ -21,7 +21,7 @@ file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelnam
 if not logger.handlers:
     logger.addHandler(file_handler)
 
-app = FastAPI()
+app = FastAPI(openapi_url="/api")
 app.include_router(auth_router)
 app.include_router(stock_router)
 app.include_router(data_router)
