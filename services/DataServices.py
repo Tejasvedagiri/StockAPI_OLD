@@ -9,16 +9,21 @@ import tempfile
 from dependecies.DataDependencies import DataDependencies
 from sqlalchemy.sql import text
 from fastapi import UploadFile, HTTPException
+from fastapi import Depends
+from database import get_database_engine
 
-def upload_csv(file: UploadFile, deps: DataDependencies ):
+def upload_csv(file: UploadFile, db: Depends(get_database_engine) ):
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_file.write(file.file.read())
 
+    from sqlalchemy import create_engine
+    DATABASE_URL = "sqlite:///./test.db"
+    db = create_engine(DATABASE_URL, pool_recycle=3600)
     df = pd.read_csv(temp_file.name)
-    df["UserID"] = deps.user.ID
+    df["UserID"] = "fdc02d45-45ad-481a-adb6-c5938857816d"
     df = df.rename(columns=rename_cols)
     df['Price'] = df['Price'].str.replace(r'[^0-9.]', '', regex=True)
-    records = df.to_sql(TABLE_NAME, deps.db, index=False)
+    records = df.to_sql(TABLE_NAME, db, index=False)
     return records
 
 def invested_amount(deps: DataDependencies):

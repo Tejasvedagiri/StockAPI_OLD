@@ -20,6 +20,7 @@ elif db_type == "POSG":
 else:
     DATABASE_URL = "sqlite:///./test.db"
 
+DATABASE_URL = "sqlite:///./test.db"
 db = create_engine(DATABASE_URL, pool_recycle=3600)
 
 if not inspect(db).has_table("Users"):
